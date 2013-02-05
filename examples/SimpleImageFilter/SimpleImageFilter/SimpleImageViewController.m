@@ -1,5 +1,7 @@
 #import "SimpleImageViewController.h"
 
+#define ME 1
+
 @implementation SimpleImageViewController
 
 - (void)didReceiveMemoryWarning
@@ -26,8 +28,8 @@
     [primaryView addSubview:imageSlider];
     
     [self setupDisplayFiltering];
-    [self setupImageResampling];
-    [self setupImageFilteringToDisk];
+    // [self setupImageResampling];
+    //[self setupImageFilteringToDisk];
 }
 
 - (void)viewDidUnload
@@ -50,11 +52,21 @@
 - (IBAction)updateSliderValue:(id)sender
 {
 //    [(GPUImageSepiaFilter *)sepiaFilter setIntensity:[(UISlider *)sender value]];
+#if !ME
     CGFloat midpoint = [(UISlider *)sender value];
     [(GPUImageTiltShiftFilter *)sepiaFilter setTopFocusLevel:midpoint - 0.1];
     [(GPUImageTiltShiftFilter *)sepiaFilter setBottomFocusLevel:midpoint + 0.1];
 
     [sourcePicture processImage];
+    
+#else
+    
+    CGFloat midpoint = [(UISlider *)sender value];
+    [(GPUImageBrightnessFilter *)sepiaFilter setBrightness:midpoint];
+    
+    [sourcePicture processImage];
+    
+#endif
 }
 
 #pragma mark -
@@ -62,6 +74,7 @@
 
 - (void)setupDisplayFiltering;
 {
+#if !ME
     UIImage *inputImage = [UIImage imageNamed:@"WID-small.jpg"]; // The WID.jpg example is greater than 2048 pixels tall, so it fails on older devices
     
     sourcePicture = [[GPUImagePicture alloc] initWithImage:inputImage smoothlyScaleOutput:YES];
@@ -75,6 +88,32 @@
     [sepiaFilter addTarget:imageView];
 
     [sourcePicture processImage];
+#else
+    
+    UIImage *inputImage = [UIImage imageNamed:@"WID-small.jpg"]; // The WID.jpg example is greater than 2048 pixels tall, so it fails on older devices
+    
+    sourcePicture = [[GPUImagePicture alloc] initWithImage:inputImage smoothlyScaleOutput:YES];
+    //    sepiaFilter = [[GPUImageSepiaFilter alloc] init];
+    sepiaFilter = [[GPUImageBrightnessFilter alloc] init];
+    
+    GPUImageView *imageView = (GPUImageView *)self.view;
+    [sepiaFilter forceProcessingAtSize:imageView.sizeInPixels]; // This is now needed to make the filter run at the smaller output size
+    
+    [sourcePicture addTarget:sepiaFilter];
+    
+    GPUImageGaussianBlurFilter *gaussFilter = [[GPUImageGaussianBlurFilter alloc] init];
+    [sepiaFilter addTarget:gaussFilter];
+    
+    GPUImageSketchFilter *sketch = [[GPUImageSketchFilter alloc] init];
+    [gaussFilter addTarget:sketch];
+    
+    //[sepiaFilter addTarget:imageView];
+    //    [gaussFilter addTarget:imageView];
+    [sketch addTarget:imageView];
+    
+    [sourcePicture processImage];
+    
+#endif
 }
 
 - (void)setupImageFilteringToDisk;
